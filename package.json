@@ -1,0 +1,42 @@
+{
+  "name": "llm-cost-optimizer-proxy",
+  "version": "1.0.0",
+  "description": "Intelligent proxy for optimizing LLM API costs through smart routing, caching, and prompt optimization",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "test": "jest",
+    "build:dashboard": "cd dashboard && npm run build",
+    "dev:dashboard": "cd dashboard && npm run dev"
+  },
+  "keywords": [
+    "llm",
+    "proxy",
+    "cost-optimization",
+    "ai",
+    "api"
+  ],
+  "author": "monna",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "dotenv": "^16.3.1",
+    "mongoose": "^8.0.3",
+    "redis": "^4.6.11",
+    "axios": "^1.6.2",
+    "crypto": "^1.0.1",
+    "winston": "^3.11.0",
+    "rate-limiter-flexible": "^4.0.1",
+    "compression": "^1.7.4",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3"
+  }
+}
