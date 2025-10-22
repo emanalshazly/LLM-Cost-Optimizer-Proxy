@@ -32,25 +32,35 @@ Opus → Only used for truly complex tasks
 
 ## Quick Start
 
-### 1. Clone and Install
+### Option 1: Deploy to Vercel (Easiest)
+
+Deploy to Vercel in minutes with MongoDB Atlas and Upstash Redis:
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new)
+
+See [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md) for detailed deployment instructions.
+
+### Option 2: Local Development
+
+#### 1. Clone and Install
 ```bash
 git clone <repo-url>
 cd llm-cost-optimizer-proxy
 npm install
 ```
 
-### 2. Environment Setup
+#### 2. Environment Setup
 ```bash
 cp .env.example .env
 # Edit .env with your API keys and database URLs
 ```
 
-### 3. Start with Docker (Recommended)
+#### 3. Start with Docker (Recommended)
 ```bash
 docker-compose up -d
 ```
 
-### 4. Or Start Manually
+#### 4. Or Start Manually
 ```bash
 # Start MongoDB and Redis first
 npm run dev
@@ -172,6 +182,28 @@ RATE_LIMIT_WINDOW_MS=60000
 - **Quality Maintained** - Smart validation ensures good responses
 - **Open Source** - Self-hosted, full control
 - **Production Ready** - Built for scale
+
+## Deployment
+
+### Vercel (Recommended for Quick Deployment)
+
+This project is optimized for Vercel deployment with serverless functions. See [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md) for:
+- Step-by-step deployment guide
+- MongoDB Atlas setup instructions
+- Upstash Redis configuration
+- Environment variable setup
+- Troubleshooting tips
+
+### Docker
+
+Deploy anywhere with Docker:
+```bash
+docker-compose up -d
+```
+
+### Traditional VPS
+
+Deploy to any VPS (AWS EC2, DigitalOcean, etc.) with Node.js, MongoDB, and Redis.
 
 ## Roadmap
 
