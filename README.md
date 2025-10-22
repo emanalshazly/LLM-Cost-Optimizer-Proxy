@@ -56,7 +56,26 @@ docker-compose up -d
 npm run dev
 ```
 
+### 5. Run the Dashboard (Optional)
+```bash
+cd dashboard
+npm install
+npm run dev
+# Dashboard will be available at http://localhost:3000
+```
+
 ## Usage
+
+### Quick Start Examples
+
+Check out the `examples/` directory for ready-to-run examples:
+```bash
+cd examples
+npm install
+npm run basic      # Basic usage demo
+npm run dashboard  # Dashboard API demo
+npm run batch      # Batch processing demo
+```
 
 ### Basic Proxy Request
 ```javascript
@@ -157,6 +176,33 @@ RATE_LIMIT_WINDOW_MS=60000
 ### Health
 - `GET /api/health` - Health check endpoint
 
+## Dashboard
+
+The project includes a beautiful React dashboard for monitoring and analytics:
+
+**Features:**
+- 📊 Real-time cost savings metrics
+- 📈 Interactive cost trend charts
+- 📝 Request logs with filtering
+- 🎯 Cache hit rate tracking
+- 🤖 Model usage breakdown
+- ⚡ Performance metrics
+
+**Access:** http://localhost:3000 (after running `npm run dev` in the dashboard directory)
+
+## Testing
+
+Run the comprehensive test suite:
+```bash
+npm test
+```
+
+The test suite includes:
+- Unit tests for all services (PromptOptimizer, CacheService, AgentChain)
+- Integration tests for API routes
+- Mock testing for external dependencies
+- Coverage reporting
+
 ## Cost Savings Examples
 
 | Original Model | Optimized Model | Task Type | Savings |
@@ -175,7 +221,8 @@ RATE_LIMIT_WINDOW_MS=60000
 
 ## Roadmap
 
-- [ ] Web dashboard UI
+- [x] Web dashboard UI (✨ Completed!)
+- [x] Comprehensive test suite (✨ Completed!)
 - [ ] More LLM providers (Google, Cohere, etc.)
 - [ ] Advanced prompt optimization with ML
 - [ ] Custom routing rules

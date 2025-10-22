@@ -32,7 +32,7 @@ router.get('/stats', async (req, res) => {
     const [
       totalRequests,
       cacheHits,
-      totalCostSaved,
+      costAggregates,
       avgProcessingTime,
       modelUsage,
       recentRequests
@@ -41,7 +41,14 @@ router.get('/stats', async (req, res) => {
       Request.countDocuments({ ...timeFilter, cacheHit: true }),
       Request.aggregate([
         { $match: timeFilter },
-        { $group: { _id: null, total: { $sum: '$cost.saved' } } }
+        {
+          $group: {
+            _id: null,
+            totalSaved: { $sum: '$cost.saved' },
+            totalOriginal: { $sum: '$cost.original' },
+            totalOptimized: { $sum: '$cost.optimized' }
+          }
+        }
       ]),
       Request.aggregate([
         { $match: timeFilter },
@@ -59,13 +66,25 @@ router.get('/stats', async (req, res) => {
     ]);
 
     const cacheStats = await cacheService.getStats();
+    const costData = costAggregates[0] || { totalSaved: 0, totalOriginal: 0, totalOptimized: 0 };
+    const totalCacheHits = cacheHits;
+    const cacheHitRate = totalRequests > 0 ? (totalCacheHits / totalRequests * 100) : 0;
+    const savingsPercent = costData.totalOriginal > 0
+      ? ((costData.totalSaved / costData.totalOriginal) * 100)
+      : 0;
 
     res.json({
       timeframe,
       totalRequests,
-      cacheHitRate: totalRequests > 0 ? (cacheHits / totalRequests * 100).toFixed(2) : 0,
-      totalCostSaved: totalCostSaved[0]?.total || 0,
-      avgProcessingTime: avgProcessingTime[0]?.avg || 0,
+      totalCacheHits,
+      cacheHitRate: parseFloat(cacheHitRate.toFixed(2)),
+      totalSaved: costData.totalSaved,
+      totalOriginalCost: costData.totalOriginal,
+      totalOptimizedCost: costData.totalOptimized,
+      savingsPercent: parseFloat(savingsPercent.toFixed(2)),
+      avgProcessingTime: Math.round(avgProcessingTime[0]?.avg || 0),
+      requestsChange: 0,
+      processingTimeChange: 0,
       modelUsage,
       recentRequests,
       cacheStats
