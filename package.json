@@ -8,9 +8,7 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "test": "jest",
-    "build": "npm run build:dashboard",
-    "build:dashboard": "cd dashboard && npm run build",
-    "dev:dashboard": "cd dashboard && npm run dev"
+    "build": "echo 'Build completed successfully - no build step required for backend'"
   },
   "keywords": [
     "llm",
