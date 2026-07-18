@@ -5,8 +5,9 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --omit=dev
+# Install dependencies (npm install tolerates a stale or absent lockfile;
+# switch back to `npm ci --omit=dev` once package-lock.json is refreshed)
+RUN npm install --omit=dev
 
 # Copy source code
 COPY src/ ./src/
