@@ -6,13 +6,14 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Copy source code
 COPY src/ ./src/
 
-# Create logs directory
-RUN mkdir -p logs
+# Create logs directory and hand the app over to the non-root node user
+RUN mkdir -p logs && chown -R node:node /app
+USER node
 
 # Expose port
 EXPOSE 3001
