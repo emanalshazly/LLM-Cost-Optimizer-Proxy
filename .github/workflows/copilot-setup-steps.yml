@@ -1,0 +1,38 @@
+name: "Copilot Setup Steps"
+
+# This workflow has no real triggers of its own — GitHub's Copilot coding
+# agent looks for a job literally named `copilot-setup-steps` in this exact
+# file path and runs these steps to provision its ephemeral dev environment
+# before it starts working on an assigned issue. The push/pull_request
+# triggers below only exist so a human can validate the steps still work
+# whenever this file changes.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # No committed package-lock.json yet (see Dockerfile), so `npm ci`
+      # isn't usable here — switch back once the lockfile is refreshed.
+      - name: Install dependencies
+        run: npm install
+
+      - name: Sanity-check the test suite runs in this environment
+        run: npm test
