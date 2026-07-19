@@ -1,25 +1,20 @@
 import axios from 'axios';
 import { logger } from '../utils/logger.js';
 
+/**
+ * Thin client for Anthropic and OpenAI chat APIs.
+ *
+ * API keys are read lazily on each call (never cached on the instance, never
+ * logged), so values loaded by dotenv at process start are always seen and
+ * keys don't end up on long-lived objects.
+ */
 export class LLMProvider {
   constructor() {
     this.providers = {
-      anthropic: {
-        baseURL: 'https://api.anthropic.com/v1',
-        headers: {
-          'x-api-key': process.env.ANTHROPIC_API_KEY,
-          'Content-Type': 'application/json',
-          'anthropic-version': '2023-06-01'
-        }
-      },
-      openai: {
-        baseURL: 'https://api.openai.com/v1',
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      }
+      anthropic: { baseURL: 'https://api.anthropic.com/v1' },
+      openai: { baseURL: 'https://api.openai.com/v1' }
     };
+    this.timeoutMs = parseInt(process.env.LLM_REQUEST_TIMEOUT_MS, 10) || 30000;
   }
 
   async generateResponse(prompt, model) {
@@ -32,12 +27,18 @@ export class LLMProvider {
         throw new Error(`Unsupported model: ${model}`);
       }
     } catch (error) {
-      logger.error(`LLM Provider error for model ${model}:`, error);
+      // Never log request payloads or headers here — only the model name.
+      logger.error(`LLM provider error for model ${model}: ${error.message}`);
       throw error;
     }
   }
 
   async callAnthropic(prompt, model) {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      throw new Error('ANTHROPIC_API_KEY is not configured');
+    }
+
     const response = await axios.post(
       `${this.providers.anthropic.baseURL}/messages`,
       {
@@ -51,7 +52,12 @@ export class LLMProvider {
         ]
       },
       {
-        headers: this.providers.anthropic.headers
+        timeout: this.timeoutMs,
+        headers: {
+          'x-api-key': apiKey,
+          'Content-Type': 'application/json',
+          'anthropic-version': '2023-06-01'
+        }
       }
     );
 
@@ -66,6 +72,11 @@ export class LLMProvider {
   }
 
   async callOpenAI(prompt, model) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error('OPENAI_API_KEY is not configured');
+    }
+
     const response = await axios.post(
       `${this.providers.openai.baseURL}/chat/completions`,
       {
@@ -79,7 +90,11 @@ export class LLMProvider {
         max_tokens: 4000
       },
       {
-        headers: this.providers.openai.headers
+        timeout: this.timeoutMs,
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        }
       }
     );
 

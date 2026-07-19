@@ -1,5 +1,5 @@
 import express from 'express';
-import Request from '../models/Request.js';
+import { requestStore } from '../services/RequestStore.js';
 import { CacheService } from '../services/CacheService.js';
 import { logger } from '../utils/logger.js';
 
@@ -9,70 +9,20 @@ const cacheService = new CacheService();
 // Get dashboard statistics
 router.get('/stats', async (req, res) => {
   try {
-    const { timeframe = '24h' } = req.query;
-    
-    let timeFilter = {};
-    const now = new Date();
-    
-    switch (timeframe) {
-      case '1h':
-        timeFilter = { timestamp: { $gte: new Date(now - 60 * 60 * 1000) } };
-        break;
-      case '24h':
-        timeFilter = { timestamp: { $gte: new Date(now - 24 * 60 * 60 * 1000) } };
-        break;
-      case '7d':
-        timeFilter = { timestamp: { $gte: new Date(now - 7 * 24 * 60 * 60 * 1000) } };
-        break;
-      case '30d':
-        timeFilter = { timestamp: { $gte: new Date(now - 30 * 24 * 60 * 60 * 1000) } };
-        break;
-    }
+    const timeframe = req.query.timeframe || '24h';
 
-    const [
-      totalRequests,
-      cacheHits,
-      totalCostSaved,
-      avgProcessingTime,
-      modelUsage,
-      recentRequests
-    ] = await Promise.all([
-      Request.countDocuments(timeFilter),
-      Request.countDocuments({ ...timeFilter, cacheHit: true }),
-      Request.aggregate([
-        { $match: timeFilter },
-        { $group: { _id: null, total: { $sum: '$cost.saved' } } }
-      ]),
-      Request.aggregate([
-        { $match: timeFilter },
-        { $group: { _id: null, avg: { $avg: '$processingTime' } } }
-      ]),
-      Request.aggregate([
-        { $match: timeFilter },
-        { $group: { _id: '$model', count: { $sum: 1 }, cost: { $sum: '$cost.optimized' } } },
-        { $sort: { count: -1 } }
-      ]),
-      Request.find(timeFilter)
-        .sort({ timestamp: -1 })
-        .limit(10)
-        .select('requestId originalPrompt model cost processingTime cacheHit timestamp')
+    const [stats, cacheStats] = await Promise.all([
+      requestStore.getStats(timeframe),
+      cacheService.getStats()
     ]);
-
-    const cacheStats = await cacheService.getStats();
 
     res.json({
       timeframe,
-      totalRequests,
-      cacheHitRate: totalRequests > 0 ? (cacheHits / totalRequests * 100).toFixed(2) : 0,
-      totalCostSaved: totalCostSaved[0]?.total || 0,
-      avgProcessingTime: avgProcessingTime[0]?.avg || 0,
-      modelUsage,
-      recentRequests,
+      ...stats,
       cacheStats
     });
-
   } catch (error) {
-    logger.error('Dashboard stats error:', error);
+    logger.error('Dashboard stats error:', error.message);
     res.status(500).json({ error: 'Failed to fetch dashboard stats' });
   }
 });
@@ -81,31 +31,17 @@ router.get('/stats', async (req, res) => {
 router.get('/requests', async (req, res) => {
   try {
     const { page = 1, limit = 50, model, cacheHit } = req.query;
-    
-    let filter = {};
-    if (model) filter.model = model;
-    if (cacheHit !== undefined) filter.cacheHit = cacheHit === 'true';
 
-    const requests = await Request.find(filter)
-      .sort({ timestamp: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .select('-response'); // Exclude response content for performance
-
-    const total = await Request.countDocuments(filter);
-
-    res.json({
-      requests,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / limit)
-      }
+    const result = await requestStore.listRequests({
+      page,
+      limit,
+      model,
+      cacheHit: cacheHit !== undefined ? cacheHit === 'true' : undefined
     });
 
+    res.json(result);
   } catch (error) {
-    logger.error('Dashboard requests error:', error);
+    logger.error('Dashboard requests error:', error.message);
     res.status(500).json({ error: 'Failed to fetch requests' });
   }
 });
@@ -116,7 +52,7 @@ router.post('/cache/clear', async (req, res) => {
     await cacheService.clear();
     res.json({ message: 'Cache cleared successfully' });
   } catch (error) {
-    logger.error('Cache clear error:', error);
+    logger.error('Cache clear error:', error.message);
     res.status(500).json({ error: 'Failed to clear cache' });
   }
 });

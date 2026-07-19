@@ -1,50 +1,29 @@
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import compression from 'compression';
-import morgan from 'morgan';
-import dotenv from 'dotenv';
+// IMPORTANT: load .env before any other module reads process.env.
+// ES module imports evaluate in order, so this import must stay first.
+import './config/env.js';
+
+import fs from 'node:fs';
+import { createApp } from './app.js';
 import { connectDB } from './config/database.js';
 import { connectRedis } from './config/redis.js';
-import { setupRateLimiting } from './middleware/rateLimiter.js';
-import { errorHandler } from './middleware/errorHandler.js';
 import { logger } from './utils/logger.js';
-import proxyRoutes from './routes/proxy.js';
-import dashboardRoutes from './routes/dashboard.js';
-import healthRoutes from './routes/health.js';
 
-dotenv.config();
-
-const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
-app.use(helmet());
-app.use(compression());
-app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
-
-// Rate limiting
-setupRateLimiting(app);
-
-// Routes
-app.use('/api/proxy', proxyRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/health', healthRoutes);
-
-// Error handling
-app.use(errorHandler);
-
-// Start server
 async function startServer() {
   try {
+    fs.mkdirSync('logs', { recursive: true });
+
+    // MongoDB and Redis are OPTIONAL. The proxy degrades gracefully to
+    // in-memory caching and request logging when they are not configured
+    // or not reachable, so `npm install && npm start` works out of the box.
     await connectDB();
     await connectRedis();
-    
+
+    const app = createApp();
     app.listen(PORT, () => {
       logger.info(`🚀 LLM Cost Optimizer Proxy running on port ${PORT}`);
-      logger.info(`📊 Dashboard available at http://localhost:${PORT}/api/dashboard`);
+      logger.info(`📊 Dashboard available at http://localhost:${PORT}/api/dashboard/stats`);
     });
   } catch (error) {
     logger.error('Failed to start server:', error);

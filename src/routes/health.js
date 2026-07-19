@@ -1,46 +1,31 @@
 import express from 'express';
-import mongoose from 'mongoose';
-import { getRedisClient } from '../config/redis.js';
+import { isMongoConnected, isRequestLoggingEnabled } from '../config/database.js';
+import { isRedisConnected, isCachingEnabled } from '../config/redis.js';
 
 const router = express.Router();
 
-router.get('/', async (req, res) => {
-  try {
-    const health = {
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      services: {}
-    };
+router.get('/', (req, res) => {
+  const mongodb = (!isRequestLoggingEnabled() || !process.env.MONGODB_URI)
+    ? 'disabled'
+    : (isMongoConnected() ? 'connected' : 'disconnected');
 
-    // Check MongoDB
-    try {
-      await mongoose.connection.db.admin().ping();
-      health.services.mongodb = 'connected';
-    } catch (error) {
-      health.services.mongodb = 'disconnected';
-      health.status = 'unhealthy';
+  const redis = (!isCachingEnabled() || !process.env.REDIS_URL)
+    ? 'disabled'
+    : (isRedisConnected() ? 'connected' : 'disconnected');
+
+  // Degraded means: a service that is configured and expected is down.
+  // Optional services that are simply not configured report "disabled" and
+  // do not affect the health status.
+  const degraded = mongodb === 'disconnected' || redis === 'disconnected';
+
+  res.status(degraded ? 503 : 200).json({
+    status: degraded ? 'degraded' : 'ok',
+    timestamp: new Date().toISOString(),
+    services: {
+      mongodb,
+      redis
     }
-
-    // Check Redis
-    try {
-      const redis = getRedisClient();
-      await redis.ping();
-      health.services.redis = 'connected';
-    } catch (error) {
-      health.services.redis = 'disconnected';
-      health.status = 'unhealthy';
-    }
-
-    const statusCode = health.status === 'healthy' ? 200 : 503;
-    res.status(statusCode).json(health);
-
-  } catch (error) {
-    res.status(503).json({
-      status: 'unhealthy',
-      timestamp: new Date().toISOString(),
-      error: error.message
-    });
-  }
+  });
 });
 
 export default router;
