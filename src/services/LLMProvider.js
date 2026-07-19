@@ -12,7 +12,8 @@ export class LLMProvider {
   constructor() {
     this.providers = {
       anthropic: { baseURL: 'https://api.anthropic.com/v1' },
-      openai: { baseURL: 'https://api.openai.com/v1' }
+      openai: { baseURL: 'https://api.openai.com/v1' },
+      google: { baseURL: 'https://generativelanguage.googleapis.com/v1beta' }
     };
     this.timeoutMs = parseInt(process.env.LLM_REQUEST_TIMEOUT_MS, 10) || 30000;
   }
@@ -23,6 +24,8 @@ export class LLMProvider {
         return await this.callAnthropic(prompt, model);
       } else if (model.startsWith('gpt-')) {
         return await this.callOpenAI(prompt, model);
+      } else if (model.startsWith('gemini-')) {
+        return await this.callGoogle(prompt, model);
       } else {
         throw new Error(`Unsupported model: ${model}`);
       }
@@ -104,6 +107,42 @@ export class LLMProvider {
         input: response.data.usage.prompt_tokens,
         output: response.data.usage.completion_tokens,
         total: response.data.usage.total_tokens
+      }
+    };
+  }
+
+  async callGoogle(prompt, model) {
+    const apiKey = process.env.GOOGLE_API_KEY;
+    if (!apiKey) {
+      throw new Error('GOOGLE_API_KEY is not configured');
+    }
+
+    const response = await axios.post(
+      `${this.providers.google.baseURL}/models/${model}:generateContent`,
+      {
+        contents: [
+          {
+            parts: [{ text: prompt }]
+          }
+        ]
+      },
+      {
+        timeout: this.timeoutMs,
+        params: { key: apiKey },
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+
+    const usageMetadata = response.data.usageMetadata || {};
+    const input = usageMetadata.promptTokenCount || 0;
+    const output = usageMetadata.candidatesTokenCount || 0;
+
+    return {
+      content: response.data.candidates[0].content.parts[0].text,
+      usage: {
+        input,
+        output,
+        total: usageMetadata.totalTokenCount || input + output
       }
     };
   }

@@ -68,13 +68,19 @@ npm start
 npm run dev
 ```
 
+### 5. Open the Dashboard
+Visit `http://localhost:3001/` for the built-in web dashboard (stat tiles, model usage, recent requests, cache clearing). If you've set `API_KEY`, paste it into the dashboard's key field so its calls to the JSON API are authenticated.
+
 ## Usage
 
 ### Basic Proxy Request
 ```javascript
 const response = await fetch('http://localhost:3001/api/proxy/chat', {
   method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+  headers: {
+    'Content-Type': 'application/json',
+    'x-api-key': 'your_api_key' // omit if API_KEY isn't set
+  },
   body: JSON.stringify({
     prompt: "Explain quantum computing in simple terms",
     model: "gpt-4",     // your original model — used as the cost baseline
@@ -90,14 +96,16 @@ console.log('Model used:', result.model);
 
 ### Dashboard API
 ```javascript
+const headers = { 'x-api-key': 'your_api_key' }; // omit if API_KEY isn't set
+
 // Get optimization statistics
-const stats = await fetch('http://localhost:3001/api/dashboard/stats?timeframe=24h');
+const stats = await fetch('http://localhost:3001/api/dashboard/stats?timeframe=24h', { headers });
 
 // Get request logs
-const logs = await fetch('http://localhost:3001/api/dashboard/requests?page=1&limit=50');
+const logs = await fetch('http://localhost:3001/api/dashboard/requests?page=1&limit=50', { headers });
 
 // Clear cache
-await fetch('http://localhost:3001/api/dashboard/cache/clear', { method: 'POST' });
+await fetch('http://localhost:3001/api/dashboard/cache/clear', { method: 'POST', headers });
 ```
 
 ## Features
@@ -107,6 +115,17 @@ await fetch('http://localhost:3001/api/dashboard/cache/clear', { method: 'POST' 
 - **Medium tasks** → Claude Sonnet (balanced, only if Haiku's answer fails validation)
 - **Complex tasks** → Claude Opus (most capable)
 - Set `ENABLE_SMART_ROUTING=false` to pass requests through to the requested model unchanged
+- A fast heuristic (prompt length + keyword cues) classifies obvious simple/complex prompts without an extra LLM call; only ambiguous prompts fall back to the Haiku classification call
+
+### 🔌 Provider Support
+- Anthropic (Claude) and OpenAI (GPT) out of the box
+- Google Gemini (`gemini-*` models) via `LLMProvider.callGoogle` — set `GOOGLE_API_KEY`
+
+### 🔐 Authentication
+- Optional `API_KEY` env var gates `/api/proxy/*` and `/api/dashboard/*` behind an `x-api-key` header (see Configuration below); `/api/health` and the dashboard UI's static assets stay public
+
+### 📟 Web Dashboard
+- A zero-build static dashboard at `/` (stat tiles, model usage, recent requests, timeframe filters, cache clearing) that consumes the existing `/api/dashboard` endpoints
 
 ### 🧹 Prompt Optimization
 - Removes redundant phrases ("please", "kindly", etc.)
@@ -153,6 +172,7 @@ REDIS_URL=
 # LLM APIs
 ANTHROPIC_API_KEY=your_key_here
 OPENAI_API_KEY=your_key_here
+GOOGLE_API_KEY=your_key_here
 
 # Features
 ENABLE_CACHING=true
@@ -163,7 +183,12 @@ ENABLE_REQUEST_LOGGING=true
 # Rate Limiting
 RATE_LIMIT_MAX_REQUESTS=100
 RATE_LIMIT_WINDOW_MS=60000
+
+# API Authentication (optional but recommended before exposing this publicly)
+API_KEY=
 ```
+
+When `API_KEY` is set, every request to `/api/proxy/*` and `/api/dashboard/*` must include an `x-api-key` header with that value. `/api/health` and the dashboard UI's static assets stay public. Leaving `API_KEY` unset keeps the API open (a startup warning is logged) — fine for local development, not for anything reachable publicly.
 
 ## Testing
 
@@ -172,9 +197,9 @@ npm test
 ```
 
 Jest + supertest suite covering the health endpoint, proxy request
-validation, routing decisions, cache hit/miss logic, and dashboard stats.
-All external LLM calls, Redis, and MongoDB are mocked — no API keys or
-running services needed.
+validation, routing decisions, cache hit/miss logic, dashboard stats,
+API key gating, and the Gemini provider dispatch. All external LLM calls,
+Redis, and MongoDB are mocked — no API keys or running services needed.
 
 ## API Endpoints
 
@@ -211,8 +236,8 @@ current provider pricing.
 
 ## Roadmap
 
-- [ ] Web dashboard UI
-- [ ] More LLM providers (Google, Cohere, etc.)
+- [x] Web dashboard UI
+- [x] More LLM providers (Google added; Cohere etc. still open)
 - [ ] Advanced prompt optimization with ML
 - [ ] Custom routing rules
 - [ ] A/B testing framework

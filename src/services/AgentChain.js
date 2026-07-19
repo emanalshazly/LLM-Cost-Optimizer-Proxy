@@ -75,8 +75,10 @@ export class AgentChain {
         result.routingReason = 'Smart routing disabled — requested model used directly';
         result.tokensUsed = normalizeUsage(response.usage);
       } else {
-        // Step 2: Analyze complexity with Haiku (cheapest model)
-        const complexityAnalysis = await this.analyzeComplexity(prompt);
+        // Step 2: Try a free heuristic first; only pay for a Haiku
+        // classification call when the prompt doesn't obviously fall into
+        // simple/complex.
+        const complexityAnalysis = this.heuristicComplexity(prompt) || await this.analyzeComplexity(prompt);
         logger.info(`Complexity analysis: ${complexityAnalysis.level}`);
         result.routingReason = complexityAnalysis.reason || '';
 
@@ -121,6 +123,26 @@ export class AgentChain {
       logger.error('Agent chain processing error:', error.message);
       throw error;
     }
+  }
+
+  // Cheap, non-LLM classification for the obvious cases. Returns null when
+  // the prompt is ambiguous enough to warrant an actual Haiku call.
+  heuristicComplexity(prompt) {
+    const trimmed = prompt.trim();
+    const length = trimmed.length;
+
+    const complexIndicators = /\b(analyze|architecture|compare and contrast|step[- ]by[- ]step|derive|prove|multi[- ]step|comprehensive|in[- ]depth|optimize|refactor|design a|debug|algorithm|research)\b/i;
+    const simpleIndicators = /^(what is|who is|when is|where is|define|translate|convert|spell|capital of|how do you say)\b/i;
+
+    if (length > 600 || complexIndicators.test(trimmed)) {
+      return { level: 'complex', reason: 'Heuristic: long or complex-indicator prompt', confidence: 0.6 };
+    }
+
+    if (length < 40 && simpleIndicators.test(trimmed) && !trimmed.includes('\n')) {
+      return { level: 'simple', reason: 'Heuristic: short, simple question', confidence: 0.6 };
+    }
+
+    return null;
   }
 
   async analyzeComplexity(prompt) {
