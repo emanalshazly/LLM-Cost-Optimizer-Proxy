@@ -11,6 +11,7 @@ RUN npm install --omit=dev
 
 # Copy source code
 COPY src/ ./src/
+COPY public/ ./public/
 
 # Create logs directory and hand the app over to the non-root node user
 RUN mkdir -p logs && chown -R node:node /app

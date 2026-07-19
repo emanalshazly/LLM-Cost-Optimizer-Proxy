@@ -23,7 +23,7 @@ async function startServer() {
     const app = createApp();
     app.listen(PORT, () => {
       logger.info(`🚀 LLM Cost Optimizer Proxy running on port ${PORT}`);
-      logger.info(`📊 Dashboard available at http://localhost:${PORT}/api/dashboard/stats`);
+      logger.info(`📊 Dashboard UI available at http://localhost:${PORT}/`);
     });
   } catch (error) {
     logger.error('Failed to start server:', error);

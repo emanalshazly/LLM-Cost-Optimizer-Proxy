@@ -48,9 +48,19 @@ describe('AgentChain routing', () => {
 
     expect(result.modelUsed).toBe(ROUTING_MODELS.simple);
     expect(result.finalResponse).toBe(`answer from ${ROUTING_MODELS.simple}`);
-    // 1 analysis call + 1 answer call
-    expect(provider.calls).toHaveLength(2);
+    // The heuristic classifies this as simple without an LLM analysis call —
+    // just the answer call.
+    expect(provider.calls).toHaveLength(1);
     expect(result.tokensUsed.total).toBe(150);
+  });
+
+  it('still calls the LLM analysis for ambiguous prompts the heuristic cannot classify', async () => {
+    const provider = fakeProvider({ analysisLevel: 'simple' });
+    const result = await makeChain(provider).processRequest('Tell me a fun fact', 'gpt-4');
+
+    expect(result.modelUsed).toBe(ROUTING_MODELS.simple);
+    // analysis call (heuristic was inconclusive) + answer call
+    expect(provider.calls).toHaveLength(2);
   });
 
   it('keeps the Haiku answer for medium prompts when validation passes', async () => {
@@ -79,7 +89,9 @@ describe('AgentChain routing', () => {
     const result = await makeChain(provider).processRequest('Prove this theorem', 'gpt-4');
 
     expect(result.modelUsed).toBe(ROUTING_MODELS.complex);
-    expect(provider.calls).toHaveLength(2);
+    // The heuristic classifies this as complex without an LLM analysis call —
+    // just the answer call.
+    expect(provider.calls).toHaveLength(1);
   });
 
   it('bypasses the chain when ENABLE_SMART_ROUTING=false', async () => {
@@ -118,6 +130,33 @@ describe('AgentChain routing', () => {
     // The final answer call received the optimized prompt, not the raw one.
     const answerCall = provider.calls.find(c => !c.prompt.includes('Analyze the complexity'));
     expect(answerCall.prompt).toBe('explain DNS');
+  });
+});
+
+describe('AgentChain heuristicComplexity', () => {
+  const chain = new AgentChain({ llmProvider: fakeProvider() });
+
+  it('classifies short factual questions as simple without calling an LLM', () => {
+    const result = chain.heuristicComplexity('What is the capital of France?');
+    expect(result).not.toBeNull();
+    expect(result.level).toBe('simple');
+  });
+
+  it('classifies prompts with complex-task keywords as complex', () => {
+    const result = chain.heuristicComplexity('Please analyze the architecture of this microservices system in depth.');
+    expect(result).not.toBeNull();
+    expect(result.level).toBe('complex');
+  });
+
+  it('classifies very long prompts as complex', () => {
+    const result = chain.heuristicComplexity('word '.repeat(200));
+    expect(result).not.toBeNull();
+    expect(result.level).toBe('complex');
+  });
+
+  it('returns null for ambiguous medium-length prompts, deferring to the LLM classifier', () => {
+    const result = chain.heuristicComplexity('Can you help me write a short poem about the ocean?');
+    expect(result).toBeNull();
   });
 });
 
