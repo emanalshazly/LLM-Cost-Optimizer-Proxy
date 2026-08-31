@@ -21,14 +21,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+          cache: npm
 
-      # No committed package-lock.json yet (see Dockerfile), so `npm ci`
-      # isn't usable here — switch back once the lockfile is refreshed.
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Run tests
         run: npm test
 
       - name: Build check
         run: npm run build
+
+      - name: Replay cost benchmark
+        run: npm run benchmark:replay

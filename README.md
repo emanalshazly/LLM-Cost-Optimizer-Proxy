@@ -1,6 +1,6 @@
 # LLM Cost Optimizer Proxy
 
-🚀 **Intelligent proxy that sits between your app and LLM APIs to automatically optimize costs**
+**Reference implementation for routing, caching, and estimating LLM request costs.**
 
 [![CI](https://github.com/emanalshazly/LLM-Cost-Optimizer-Proxy/actions/workflows/ci.yml/badge.svg)](https://github.com/emanalshazly/LLM-Cost-Optimizer-Proxy/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -11,7 +11,7 @@
 ✂️ **Prompt Optimization** - Cleans prompts by removing redundancy and unnecessary words  
 🔄 **Smart Model Routing** - Uses cheaper models for simple tasks, expensive ones only when needed  
 💾 **Intelligent Caching** - Same question = same answer (without API calls)  
-📊 **Cost Tracking** - Monitor every request and see how much you're saving  
+📊 **Cost Estimation** - Compare requests using an editable point-in-time pricing table
 
 ## The Secret: Agent Chain Architecture
 
@@ -25,7 +25,7 @@ Sonnet → Validates Haiku's answer for medium complexity
 Opus → Only used for truly complex tasks
 ```
 
-**Result: substantial cost savings** — internal estimates suggest 60-80% depending on your traffic mix (simple vs. complex requests). Your mileage will vary; measure with your own workload via the dashboard endpoints.
+The architecture is intended to make lower-cost routing experiments measurable. This repository does not contain evidence for a general savings or quality-maintenance percentage.
 
 ## Tech Stack
 
@@ -36,7 +36,7 @@ Opus → Only used for truly complex tasks
 
 > **Zero-infrastructure mode:** MongoDB and Redis are both optional. Without
 > them, the proxy falls back to in-memory caching and request logging, so
-> `npm install && npm start` works out of the box. Add the services later for
+> `npm ci && npm start` works out of the box. Add the services later for
 > durable storage and a shared cache.
 
 ## Quick Start
@@ -45,7 +45,7 @@ Opus → Only used for truly complex tasks
 ```bash
 git clone <repo-url>
 cd llm-cost-optimizer-proxy
-npm install
+npm ci
 ```
 
 ### 2. Environment Setup
@@ -130,7 +130,7 @@ await fetch('http://localhost:3001/api/dashboard/cache/clear', { method: 'POST',
 ### 🧹 Prompt Optimization
 - Removes redundant phrases ("please", "kindly", etc.)
 - Simplifies complex language
-- Reduces token count (typically 20-40% on verbose prompts, estimated)
+- Reports token-count differences for inspection; no general reduction range is claimed
 
 ### ⚡ Intelligent Caching
 - SHA-256 based cache keys — raw prompts are never stored in keys or logs
@@ -143,13 +143,14 @@ await fetch('http://localhost:3001/api/dashboard/cache/clear', { method: 'POST',
 - Cache hit rates
 - Processing time metrics
 
-### 💲 Transparent Pricing
-All cost and savings calculations read from a single, editable pricing table:
+### 💲 Inspectable pricing estimates
+All cost estimates read from a single, editable pricing table:
 [`src/config/pricing.js`](src/config/pricing.js) — USD per 1K tokens for
-Anthropic and OpenAI models. Prices are point-in-time public list prices;
-verify against the provider's pricing page before quoting savings.
+Anthropic, OpenAI, and Google models. Its provenance record marks the current
+table `requires_revalidation`; verify the linked provider pages before quoting
+or making a purchasing decision.
 
-### 🛡️ Production Ready
+### 🛡️ Reference implementation controls
 - Rate limiting (Redis-backed or in-memory)
 - Error handling
 - Health checks
@@ -214,11 +215,20 @@ Redis, and MongoDB are mocked — no API keys or running services needed.
 ### Health
 - `GET /api/health` - Health check endpoint (reports per-service status; optional services show as `disabled`)
 
-## Cost Savings Examples
+## Replay benchmark
 
-Estimated savings based on the list prices in `src/config/pricing.js` —
-**not measured benchmarks**. Actual savings depend on your traffic mix and
-current provider pricing.
+Run `npm run benchmark:replay` to replay fixed token counts. The output keeps
+`cost_estimate` separate from `quality_result`; the bundled fixture intentionally
+reports quality as `not_measured`. Cost deltas do not prove response quality.
+
+### Limitations
+
+- The table contains legacy model ids and unmeasured point estimates; it is not a live pricing feed.
+- The previously stated 60–80% savings and 20–40% prompt reduction ranges were estimates, not repository benchmarks.
+- Provider pricing, token accounting, latency, and model availability change over time.
+- Mocked unit tests do not establish production reliability or output quality.
+
+### Illustrative estimates only
 
 | Original Model | Optimized Model | Task Type | Estimated Savings |
 |---------------|-----------------|-----------|-------------------|
@@ -229,10 +239,10 @@ current provider pricing.
 ## Why This Matters
 
 - **Plug & Play** - No code changes needed in your app
-- **Real Savings** - Cheaper models handle the bulk of everyday traffic
-- **Quality Maintained** - Smart validation ensures good responses
+- **Inspectable estimates** - Cost math and pricing provenance are explicit
+- **Quality tracked separately** - Replay results cannot infer quality from price
 - **Open Source** - Self-hosted, full control
-- **Production Ready** - Built for scale
+- **Self-hostable reference** - Production hardening remains deployment-specific
 
 ## Roadmap
 
@@ -259,4 +269,4 @@ MIT License - see LICENSE file for details
 
 ---
 
-**Save money on LLM costs without sacrificing quality!** 🎯
+**Measure routing cost and quality as separate outcomes.**

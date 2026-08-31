@@ -8,6 +8,7 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "benchmark:replay": "node benchmarks/replay.js benchmarks/fixtures/sample.json",
     "build": "echo 'Build completed successfully - no build step required for backend'"
   },
   "engines": {
