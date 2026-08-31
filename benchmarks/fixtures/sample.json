@@ -1,0 +1,19 @@
+{
+  "fixture_version": 1,
+  "cases": [
+    {
+      "id": "simple-routing-example",
+      "original_model": "gpt-4",
+      "used_model": "claude-3-haiku-20240307",
+      "tokens": { "input": 800, "output": 300 },
+      "quality": { "status": "not_measured", "result": null, "evaluator": null }
+    },
+    {
+      "id": "same-model-control",
+      "original_model": "gpt-4o",
+      "used_model": "gpt-4o",
+      "tokens": { "input": 1200, "output": 500 },
+      "quality": { "status": "not_measured", "result": null, "evaluator": null }
+    }
+  ]
+}

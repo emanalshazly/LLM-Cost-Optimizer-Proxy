@@ -30,6 +30,21 @@ export const MODEL_PRICING = {
 // Conservative fallback for unknown models (GPT-4-class pricing).
 export const DEFAULT_PRICING = { input: 0.03, output: 0.06 };
 
+// Provenance is deliberately separate from numeric estimates. The listed
+// model ids are legacy reference values and MUST be revalidated before a
+// result is presented as a current quote.
+export const PRICING_PROVENANCE = {
+  snapshotCheckedAt: '2026-08-31',
+  status: 'requires_revalidation',
+  unit: 'USD per 1K tokens',
+  sources: {
+    openai: 'https://developers.openai.com/api/docs/pricing',
+    anthropic: 'https://platform.claude.com/docs/en/about-claude/pricing',
+    google: 'https://ai.google.dev/gemini-api/docs/pricing'
+  },
+  note: 'Provider pages are authoritative; this legacy table is an editable reference snapshot, not a live quote.'
+};
+
 export function getModelPricing(model) {
   return MODEL_PRICING[model] || DEFAULT_PRICING;
 }
